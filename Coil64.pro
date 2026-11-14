@@ -15,6 +15,8 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
+    meander_pcb.cpp \
+    mthread_calculate.cpp \
     about.cpp \
     aircoretoroid.cpp \
     al.cpp \
@@ -45,6 +47,8 @@ SOURCES += \
 
 HEADERS += \
     mainwindow.h \
+    meander_pcb.h \
+    mthread_calculate.h \
     about.h \
     aircoretoroid.h \
     al.h \
@@ -79,6 +83,7 @@ HEADERS += \
 
 FORMS += \
     mainwindow.ui \
+    meander_pcb.ui \
     about.ui \
     aircoretoroid.ui \
     al.ui \

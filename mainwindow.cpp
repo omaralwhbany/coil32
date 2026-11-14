@@ -338,7 +338,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QAction *action4 = popupmenu->addAction(tr("Clear all"));
     action0->setShortcut(QKeySequence::Copy);
     action0->setIcon(QPixmap(":/menu_ico/res/ico2-inconsistency.png"));
-    action1->setShortcut(QKeySequence(Qt::ALT + Qt::Key_A));
+    action1->setShortcut(QKeySequence(Qt::ALT | Qt::Key_A));
     action1->setIcon(QPixmap(":/menu_ico/res/ico2-copy.png"));
     action2->setShortcut(QKeySequence::Save);
     action2->setIcon(QPixmap(":/menu_ico/res/ico2-save.png"));

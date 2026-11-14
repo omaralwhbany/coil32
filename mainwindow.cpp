@@ -138,6 +138,7 @@ MainWindow::MainWindow(QWidget *parent) :
         bar->setContentsMargins(4, 2, 4, 2);
         bar->setSpacing(6);
         mui->verticalLayout_11->removeItem(bar);
+        bar->setParent(nullptr);
         auto *stripContent = new QWidget;
         stripContent->setLayout(bar);
         auto *strip = new QScrollArea(calculatorContent);

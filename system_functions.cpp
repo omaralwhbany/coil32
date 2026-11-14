@@ -440,6 +440,10 @@ QString formatLength(double length, double lengthMultiplyer) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool isAppPortable(){
+#ifdef Q_OS_ANDROID
+    // Android application bundles are read-only; always use app-private storage.
+    return false;
+#else
     QString appPath = qApp->applicationDirPath();
     bool result = true;
 #if defined(Q_OS_LINUX)
@@ -469,10 +473,15 @@ bool isAppPortable(){
         result = false;
 #endif
     return result;
+#endif
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void defineAppSettings(QSettings *&settings){
-#if defined(Q_OS_MAC) || defined(Q_WS_X11) || defined(Q_OS_LINUX)
+#ifdef Q_OS_ANDROID
+    const QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QDir().mkpath(configDir);
+    settings = new QSettings(configDir + "/Coil64.conf", QSettings::IniFormat);
+#elif defined(Q_OS_MAC) || defined(Q_WS_X11) || defined(Q_OS_LINUX)
     if (isAppPortable())
         settings = new QSettings(qApp->applicationDirPath() + "/Coil64.conf", QSettings::IniFormat);
     else
@@ -492,12 +501,20 @@ QString defineSavePath(){
     defineAppSettings(settings);
     settings->beginGroup( "GUI" );
     QString savePath;
+#ifdef Q_OS_ANDROID
+    const QString defaultSavePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/Save";
+    savePath = settings->value("SaveDir", defaultSavePath).toString();
+#else
     if (isAppPortable())
         savePath = settings->value("SaveDir", qApp->applicationDirPath() + PORTABLE_SAVE_LOCATION).toString();
     else
         savePath = settings->value("SaveDir", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation).toUtf8() + USER_SAVE_LOCATION).toString();
+#endif
     settings->endGroup();
     delete settings;
+#ifdef Q_OS_ANDROID
+    QDir().mkpath(savePath);
+#endif
     return savePath;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

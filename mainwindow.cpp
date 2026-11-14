@@ -765,13 +765,15 @@ void MainWindow::changeEvent(QEvent *e)
 bool MainWindow::eventFilter(QObject *watched, QEvent *event){
 #ifdef Q_OS_ANDROID
     if (auto *field = qobject_cast<QLineEdit*>(watched)) {
-        if (event->type() == QEvent::MouseButtonRelease ||
-            event->type() == QEvent::FocusIn) {
+        if (event->type() == QEvent::MouseButtonRelease) {
             QTimer::singleShot(100, field, [field]() {
                 if (field->isVisible() && field->hasFocus()) {
-                    QGuiApplication::inputMethod()->show();
-                    if (auto *scroll = field->parentWidget()->findChild<QScrollArea*>())
+                    QWidget *ancestor = field;
+                    while (ancestor && !qobject_cast<QScrollArea*>(ancestor))
+                        ancestor = ancestor->parentWidget();
+                    if (auto *scroll = qobject_cast<QScrollArea*>(ancestor))
                         scroll->ensureWidgetVisible(field, 12, 12);
+                    QGuiApplication::inputMethod()->show();
                 }
             });
         }

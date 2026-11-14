@@ -847,7 +847,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event){
     // are left untouched.
     if (auto *dialog = qobject_cast<QDialog*>(watched)) {
         if (event->type() == QEvent::Show) {
-            QTimer::singleShot(0, dialog, [dialog]() {
+            QTimer::singleShot(0, dialog, [this, dialog]() {
                 if (!dialog || !dialog->isVisible())
                     return;
                 QScreen *screen = dialog->screen();

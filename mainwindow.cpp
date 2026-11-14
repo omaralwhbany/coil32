@@ -99,13 +99,30 @@ MainWindow::MainWindow(QWidget *parent) :
     calculatorScroll->setMinimumSize(0, 0);
     calculatorScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
+    // Put both the original input form and the original result workspace in
+    // one vertically scrolling phone page. No calculator control is recreated
+    // or disconnected, so all original slots and result actions stay intact.
+    auto *calculatorContent = new QWidget;
+    calculatorContent->setObjectName(QStringLiteral("androidCalculatorContent"));
+    calculatorContent->setMinimumSize(0, 0);
+    auto *calculatorContentLayout = new QVBoxLayout(calculatorContent);
+    calculatorContentLayout->setContentsMargins(0, 0, 0, 0);
+    calculatorContentLayout->setSpacing(12);
+
     mui->horizontalLayout->removeWidget(mui->widget);
     mui->horizontalLayout->removeWidget(mui->line_12);
+    mui->horizontalLayout->removeWidget(mui->line_8);
+    mui->horizontalLayout->removeItem(mui->verticalLayout_11);
     mui->verticalLayout_12->removeWidget(mui->pushButton_Calculate);
     mui->pushButton_Calculate->setParent(calculatorPanel);
     mui->pushButton_Calculate->setMinimumSize(0, 54);
     mui->pushButton_Calculate->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    calculatorScroll->setWidget(mui->widget);
+    mui->line_8->hide();
+    mui->line_8->setFrameShape(QFrame::HLine);
+    calculatorContentLayout->addWidget(mui->widget);
+    calculatorContentLayout->addLayout(mui->verticalLayout_11);
+    mui->verticalLayout_11->setContentsMargins(0, 0, 0, 0);
+    calculatorScroll->setWidget(calculatorContent);
     calculatorPanelLayout->addWidget(calculatorScroll, 1);
     calculatorPanelLayout->addWidget(mui->pushButton_Calculate, 0);
     mui->horizontalLayout->addWidget(mui->line_12, 0);
@@ -129,7 +146,7 @@ MainWindow::MainWindow(QWidget *parent) :
         button->setMinimumHeight(qMax(button->minimumHeight(), 44));
     }
     mui->tabWidget->setDocumentMode(true);
-    mui->textBrowser->setMinimumHeight(120);
+    mui->textBrowser->setMinimumHeight(180);
 
     // Dialogs created by the original desktop code are resized to the phone
     // viewport and receive touch-sized input controls when they are shown.

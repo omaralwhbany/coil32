@@ -21,9 +21,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 
 #ifdef Q_OS_ANDROID
 #include <QBoxLayout>
+#include <QGuiApplication>
+#include <QInputMethod>
 #include <QPdfWriter>
 #include <QPageLayout>
 #include <QPageSize>
+#include <QScrollArea>
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,19 +40,41 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->actionPrint->setVisible(false);
     mui->toolButton_Print->setVisible(false);
 
-    // Adapt the desktop two-column layout to narrow phone screens.
+    // Reflow the desktop layout and make the calculator area scrollable on phones.
     setMinimumSize(0, 0);
-    mui->widget->setMinimumWidth(0);
+    mui->centralWidget->setMinimumSize(0, 0);
+    mui->widget->setMinimumSize(0, 0);
     mui->widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    mui->tabWidget->setMinimumWidth(0);
+    mui->tabWidget->setMinimumSize(0, 0);
     mui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    auto *calculatorScroll = new QScrollArea(this);
+    calculatorScroll->setObjectName(QStringLiteral("androidCalculatorScrollArea"));
+    calculatorScroll->setWidgetResizable(true);
+    calculatorScroll->setFrameShape(QFrame::NoFrame);
+    calculatorScroll->setMinimumSize(0, 0);
+    mui->horizontalLayout->removeWidget(mui->widget);
+    calculatorScroll->setWidget(mui->widget);
+    mui->horizontalLayout->addWidget(calculatorScroll);
+
     mui->listWidget->setMinimumWidth(0);
-    mui->listWidget->setMinimumHeight(90);
-    mui->listWidget->setMaximumHeight(150);
-    mui->image->setMaximumSize(160, 90);
+    mui->listWidget->setMinimumHeight(80);
+    mui->listWidget->setMaximumHeight(115);
+    mui->image->setMaximumSize(140, 72);
     mui->image->setScaledContents(true);
-    mui->verticalLayout->setSpacing(4);
-    mui->horizontalLayout->setSpacing(6);
+    mui->verticalLayout->setSpacing(3);
+    mui->horizontalLayout->setSpacing(4);
+
+    // Make every numeric/text input usable at phone width and reopen the
+    // Android soft keyboard even when the field retained focus after Back.
+    const auto inputFields = findChildren<QLineEdit*>();
+    for (QLineEdit *field : inputFields) {
+        field->setMinimumWidth(0);
+        field->setMinimumHeight(40);
+        field->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        field->setAttribute(Qt::WA_InputMethodEnabled, true);
+        field->installEventFilter(this);
+    }
 #endif
     net_manager = new QNetworkAccessManager();
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -673,7 +698,10 @@ void MainWindow::resizeEvent(QResizeEvent *)
     mui->horizontalLayout->setDirection(portraitLayout
         ? QBoxLayout::TopToBottom
         : QBoxLayout::LeftToRight);
+    mui->horizontalLayout->setStretch(0, portraitLayout ? 0 : 1);
+    mui->horizontalLayout->setStretch(2, 1);
     mui->line_12->setFrameShape(portraitLayout ? QFrame::HLine : QFrame::VLine);
+    mui->listWidget->setMaximumHeight(portraitLayout ? 105 : 150);
 #endif
     int w = (int) 235 * sqrt(mui->toolButton_Configure->iconSize().width());
     if (this->width() < w){
@@ -735,6 +763,20 @@ void MainWindow::changeEvent(QEvent *e)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MainWindow::eventFilter(QObject *watched, QEvent *event){
+#ifdef Q_OS_ANDROID
+    if (auto *field = qobject_cast<QLineEdit*>(watched)) {
+        if (event->type() == QEvent::MouseButtonRelease ||
+            event->type() == QEvent::FocusIn) {
+            QTimer::singleShot(100, field, [field]() {
+                if (field->isVisible() && field->hasFocus()) {
+                    QGuiApplication::inputMethod()->show();
+                    if (auto *scroll = field->parentWidget()->findChild<QScrollArea*>())
+                        scroll->ensureWidgetVisible(field, 12, 12);
+                }
+            });
+        }
+    }
+#endif
     if (event->type() == QEvent::ShortcutOverride) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         if (keyEvent->modifiers().testFlag(Qt::ControlModifier) && keyEvent->key() == 'S') {

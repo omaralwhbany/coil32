@@ -48,14 +48,30 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->tabWidget->setMinimumSize(0, 0);
     mui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    auto *calculatorScroll = new QScrollArea(this);
+    // Keep the primary Calculate action outside the scroll area so it remains
+    // visible at the bottom of the phone screen while the input form scrolls.
+    auto *calculatorPanel = new QWidget(this);
+    auto *calculatorPanelLayout = new QVBoxLayout(calculatorPanel);
+    calculatorPanelLayout->setContentsMargins(0, 0, 0, 0);
+    calculatorPanelLayout->setSpacing(4);
+
+    auto *calculatorScroll = new QScrollArea(calculatorPanel);
     calculatorScroll->setObjectName(QStringLiteral("androidCalculatorScrollArea"));
     calculatorScroll->setWidgetResizable(true);
     calculatorScroll->setFrameShape(QFrame::NoFrame);
     calculatorScroll->setMinimumSize(0, 0);
+
     mui->horizontalLayout->removeWidget(mui->widget);
+    mui->verticalLayout_12->removeWidget(mui->pushButton_Calculate);
+    mui->pushButton_Calculate->setParent(calculatorPanel);
+    mui->pushButton_Calculate->setMinimumWidth(0);
+    mui->pushButton_Calculate->setMinimumHeight(50);
+    mui->pushButton_Calculate->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
     calculatorScroll->setWidget(mui->widget);
-    mui->horizontalLayout->addWidget(calculatorScroll);
+    calculatorPanelLayout->addWidget(calculatorScroll, 1);
+    calculatorPanelLayout->addWidget(mui->pushButton_Calculate, 0);
+    mui->horizontalLayout->addWidget(calculatorPanel, 1);
 
     mui->listWidget->setMinimumWidth(0);
     mui->listWidget->setMinimumHeight(80);

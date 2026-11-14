@@ -19,12 +19,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 #include "ui_mainwindow.h"
 #include "resolve_q.h"
 
+#ifdef Q_OS_ANDROID
+#include <QPdfWriter>
+#include <QPageLayout>
+#include <QPageSize>
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     mui(new Ui::MainWindow)
 {
     mui->setupUi(this);
+#ifdef Q_OS_ANDROID
+    // Printing through Qt PrintSupport is not available on Android.
+    mui->actionPrint->setVisible(false);
+    mui->toolButton_Print->setVisible(false);
+#endif
     net_manager = new QNetworkAccessManager();
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     net_manager->setNetworkAccessible(QNetworkAccessManager::Accessible);
@@ -930,6 +941,7 @@ void MainWindow::checkAppVersion(QNetworkReply *reply){
     }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifndef Q_OS_ANDROID
 void MainWindow::on_actionPrint_triggered()
 {
     QTextDocument *document = mui->textBrowser->document();
@@ -941,6 +953,7 @@ void MainWindow::on_actionPrint_triggered()
         document->print(&printer);
     }
 }
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_actionCheck_for_update_triggered()
 {
@@ -2492,6 +2505,23 @@ void MainWindow::on_actionSave_triggered()
                     textwriter.write(document);
                 }
                 if (ext == ".pdf"){
+                    QFont oldFont(document->defaultFont());
+                    QFont newFont = oldFont;
+                    newFont.setFamily("Courier New");
+                    if (myOpt->isOutputInTwoColumns)
+                        newFont.setPointSize(8);
+                    else
+                        newFont.setPointSize(6);
+                    document->setDefaultFont(newFont);
+#ifdef Q_OS_ANDROID
+                    // QPdfWriter belongs to QtGui and is available on Android.
+                    QPdfWriter writer(fileName);
+                    writer.setResolution(96);
+                    writer.setPageSize(QPageSize(QPageSize::A4));
+                    writer.setPageMargins(QMarginsF(50, 50, 50, 50));
+                    document->setPageSize(writer.pageLayout().paintRectPixels(writer.resolution()).size());
+                    document->print(&writer);
+#else
                     QPrinter printer(QPrinter::PrinterResolution);
                     printer.setOutputFormat(QPrinter::PdfFormat);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -2501,20 +2531,13 @@ void MainWindow::on_actionSave_triggered()
 #endif
                     printer.setOutputFileName(fileName);
                     printer.setPageMargins(QMarginsF(50, 50, 50, 50));
-                    QFont oldFont(document->defaultFont());
-                    QFont newFont = oldFont;
-                    newFont.setFamily("Courier New");
-                    if (myOpt->isOutputInTwoColumns)
-                        newFont.setPointSize(8);
-                    else
-                        newFont.setPointSize(6);
-                    document->setDefaultFont(newFont);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
                     document->setPageSize(printer.pageRect(QPrinter::DevicePixel).size());
 #else
                     document->setPageSize(printer.pageRect().size());
 #endif
                     document->print(&printer);
+#endif
                     document->setDefaultFont(oldFont);
                 }
                 document->setHtml(oldTxt);
@@ -2855,7 +2878,9 @@ void MainWindow::on_toolButton_Clear_clicked()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_toolButton_Print_clicked()
 {
+#ifndef Q_OS_ANDROID
     on_actionPrint_triggered();
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::on_toolButton_Open_clicked()

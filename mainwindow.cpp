@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 #include <QAbstractButton>
 #include <QComboBox>
 #include <QDialog>
+#include <QMenu>
+#include <QLabel>
 #include <QListView>
 #include <QGuiApplication>
 #include <QInputMethod>
@@ -82,6 +84,29 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->horizontalLayout->setDirection(QBoxLayout::TopToBottom);
     mui->horizontalLayout->setContentsMargins(8, 6, 8, 8);
     mui->horizontalLayout->setSpacing(6);
+
+    // Replace the desktop menu bar with a compact phone app bar. The original
+    // menus are mirrored into the overflow menu after language actions load.
+    auto *mobileHeader = new QWidget(mui->centralWidget);
+    mobileHeader->setObjectName(QStringLiteral("androidAppHeader"));
+    auto *mobileHeaderLayout = new QHBoxLayout(mobileHeader);
+    mobileHeaderLayout->setContentsMargins(4, 2, 4, 2);
+    mobileHeaderLayout->setSpacing(8);
+    auto *appTitle = new QLabel(QCoreApplication::applicationName(), mobileHeader);
+    appTitle->setObjectName(QStringLiteral("androidAppTitle"));
+    appTitle->setStyleSheet(QStringLiteral("font-size:18px;font-weight:600;"));
+    auto *overflowButton = new QToolButton(mobileHeader);
+    overflowButton->setObjectName(QStringLiteral("androidOverflowButton"));
+    overflowButton->setText(tr("More"));
+    overflowButton->setIcon(QIcon(QStringLiteral(":/menu_ico/res/ico2-settings.png")));
+    overflowButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    overflowButton->setPopupMode(QToolButton::InstantPopup);
+    overflowButton->setMinimumSize(52, 44);
+    overflowButton->setMenu(new QMenu(overflowButton));
+    mobileHeaderLayout->addWidget(appTitle, 1);
+    mobileHeaderLayout->addWidget(overflowButton, 0);
+    mui->horizontalLayout->insertWidget(0, mobileHeader, 0);
+
     mui->line_12->setFrameShape(QFrame::HLine);
     mui->line_12->setMaximumHeight(1);
 
@@ -345,6 +370,19 @@ MainWindow::MainWindow(QWidget *parent) :
         }
     }
     //End add language menu group if additional languages are available
+#ifdef Q_OS_ANDROID
+    if (auto *overflowButton = findChild<QToolButton*>(QStringLiteral("androidOverflowButton"))) {
+        if (QMenu *overflowMenu = overflowButton->menu()) {
+            for (QAction *menuAction : menuBar()->actions()) {
+                if (QMenu *sourceMenu = menuAction->menu()) {
+                    QMenu *mobileSubmenu = overflowMenu->addMenu(sourceMenu->title());
+                    mobileSubmenu->addActions(sourceMenu->actions());
+                }
+            }
+        }
+        menuBar()->hide();
+    }
+#endif
 
     mui->toolButton_showImg->setChecked(myOpt->isInsertImage);
     mui->toolButton_showTitle->setChecked(myOpt->isShowTitle);

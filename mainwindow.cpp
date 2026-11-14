@@ -21,6 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 
 #ifdef Q_OS_ANDROID
 #include <QBoxLayout>
+#include <QAbstractButton>
+#include <QComboBox>
+#include <QListView>
 #include <QGuiApplication>
 #include <QInputMethod>
 #include <QPdfWriter>
@@ -125,7 +128,6 @@ MainWindow::MainWindow(QWidget *parent) :
         button->setMinimumHeight(qMax(button->minimumHeight(), 44));
     }
     mui->tabWidget->setDocumentMode(true);
-    mui->tabWidget->tabBar()->setExpanding(true);
     mui->textBrowser->setMinimumHeight(120);
 
     // Dialogs created by the original desktop code are resized to the phone

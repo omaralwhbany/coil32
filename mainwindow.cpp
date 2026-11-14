@@ -858,6 +858,31 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event){
                 dialog->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
                 if (dialog->layout())
                     dialog->layout()->setSizeConstraint(QLayout::SetNoConstraint);
+
+                // Many legacy forms hard-code desktop minimum dimensions on
+                // their child panels. Remove those constraints on Android.
+                for (QWidget *child : dialog->findChildren<QWidget*>())
+                    child->setMinimumSize(0, 0);
+
+                // Stack only layouts that explicitly divide major panels with
+                // a vertical separator. Small label/input rows stay horizontal.
+                for (QBoxLayout *box : dialog->findChildren<QBoxLayout*>()) {
+                    if (box->direction() != QBoxLayout::LeftToRight)
+                        continue;
+                    bool hasPanelDivider = false;
+                    for (int i = 0; i < box->count(); ++i) {
+                        QWidget *itemWidget = box->itemAt(i)->widget();
+                        if (auto *frame = qobject_cast<QFrame*>(itemWidget)) {
+                            if (frame->frameShape() == QFrame::VLine) {
+                                frame->setFrameShape(QFrame::HLine);
+                                hasPanelDivider = true;
+                            }
+                        }
+                    }
+                    if (hasPanelDivider)
+                        box->setDirection(QBoxLayout::TopToBottom);
+                }
+
                 const int width = qMax(280, qMin(dialog->sizeHint().width(),
                                                  int(available.width() * 0.96)));
                 const int height = qMax(300, qMin(dialog->sizeHint().height(),
@@ -875,8 +900,10 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event){
                     combo->setMinimumHeight(46);
                     combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
                 }
-                for (QAbstractButton *button : dialog->findChildren<QAbstractButton*>())
-                    button->setMinimumHeight(qMax(button->minimumHeight(), 44));
+                for (QAbstractButton *button : dialog->findChildren<QAbstractButton*>()) {
+                    button->setMinimumSize(qMax(button->minimumWidth(), 44),
+                                           qMax(button->minimumHeight(), 44));
+                }
             });
         }
     }

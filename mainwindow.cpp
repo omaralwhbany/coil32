@@ -122,6 +122,38 @@ MainWindow::MainWindow(QWidget *parent) :
     calculatorContentLayout->addWidget(mui->widget);
     calculatorContentLayout->addLayout(mui->verticalLayout_11);
     mui->verticalLayout_11->setContentsMargins(0, 0, 0, 0);
+
+    // Long desktop icon rows become horizontally scrollable touch strips.
+    // Every original action remains available without squeezing the controls.
+    const auto makeTouchStrip = [this](QHBoxLayout *bar, const QString &name) {
+        const int position = mui->verticalLayout_11->indexOf(bar);
+        if (position < 0)
+            return;
+        for (int i = bar->count() - 1; i >= 0; --i) {
+            QLayoutItem *item = bar->itemAt(i);
+            if (item && item->spacerItem()) {
+                delete bar->takeAt(i);
+            }
+        }
+        bar->setContentsMargins(4, 2, 4, 2);
+        bar->setSpacing(6);
+        mui->verticalLayout_11->removeItem(bar);
+        auto *stripContent = new QWidget;
+        stripContent->setLayout(bar);
+        auto *strip = new QScrollArea(calculatorContent);
+        strip->setObjectName(name);
+        strip->setWidget(stripContent);
+        strip->setWidgetResizable(false);
+        strip->setFrameShape(QFrame::NoFrame);
+        strip->setFixedHeight(58);
+        strip->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        strip->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        mui->verticalLayout_11->insertWidget(position, strip);
+    };
+    makeTouchStrip(mui->horizontalLayout_5, QStringLiteral("androidDisplayOptionsStrip"));
+    makeTouchStrip(mui->horizontalLayout_1, QStringLiteral("androidResultActionsStrip"));
+    makeTouchStrip(mui->horizontalLayout_2, QStringLiteral("androidFileActionsStrip"));
+
     calculatorScroll->setWidget(calculatorContent);
     calculatorPanelLayout->addWidget(calculatorScroll, 1);
     calculatorPanelLayout->addWidget(mui->pushButton_Calculate, 0);
@@ -144,6 +176,8 @@ MainWindow::MainWindow(QWidget *parent) :
     }
     for (QAbstractButton *button : findChildren<QAbstractButton*>()) {
         button->setMinimumHeight(qMax(button->minimumHeight(), 44));
+        if (qobject_cast<QToolButton*>(button))
+            button->setMinimumWidth(qMax(button->minimumWidth(), 44));
     }
     mui->tabWidget->setDocumentMode(true);
     mui->textBrowser->setMinimumHeight(180);

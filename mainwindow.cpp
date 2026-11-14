@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 #include <QBoxLayout>
 #include <QAbstractButton>
 #include <QComboBox>
+#include <QDialog>
 #include <QListView>
 #include <QGuiApplication>
 #include <QInputMethod>
@@ -824,6 +825,44 @@ void MainWindow::changeEvent(QEvent *e)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool MainWindow::eventFilter(QObject *watched, QEvent *event){
 #ifdef Q_OS_ANDROID
+    // Adapt every legacy calculator dialog to the available phone viewport.
+    // This is presentation-only: dialog classes and their calculation slots
+    // are left untouched.
+    if (auto *dialog = qobject_cast<QDialog*>(watched)) {
+        if (event->type() == QEvent::Show) {
+            QTimer::singleShot(0, dialog, [dialog]() {
+                if (!dialog || !dialog->isVisible())
+                    return;
+                QScreen *screen = dialog->screen();
+                const QRect available = screen
+                    ? screen->availableGeometry()
+                    : QGuiApplication::primaryScreen()->availableGeometry();
+                dialog->setMinimumSize(0, 0);
+                dialog->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+                if (dialog->layout())
+                    dialog->layout()->setSizeConstraint(QLayout::SetNoConstraint);
+                const int width = qMax(280, qMin(dialog->sizeHint().width(),
+                                                 int(available.width() * 0.96)));
+                const int height = qMax(300, qMin(dialog->sizeHint().height(),
+                                                  int(available.height() * 0.92)));
+                dialog->resize(width, height);
+                for (QLineEdit *field : dialog->findChildren<QLineEdit*>()) {
+                    field->setMinimumWidth(0);
+                    field->setMinimumHeight(48);
+                    field->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+                    field->setAttribute(Qt::WA_InputMethodEnabled, true);
+                    field->installEventFilter(this);
+                }
+                for (QComboBox *combo : dialog->findChildren<QComboBox*>()) {
+                    combo->setMinimumWidth(0);
+                    combo->setMinimumHeight(46);
+                    combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+                }
+                for (QAbstractButton *button : dialog->findChildren<QAbstractButton*>())
+                    button->setMinimumHeight(qMax(button->minimumHeight(), 44));
+            });
+        }
+    }
     if (auto *field = qobject_cast<QLineEdit*>(watched)) {
         if (event->type() == QEvent::MouseButtonRelease) {
             QTimer::singleShot(100, field, [field]() {

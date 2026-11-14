@@ -33,8 +33,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 #include <QDate>
 #include <QDesktopServices>
 #include <QClipboard>
+#ifndef Q_OS_ANDROID
 #include <QPrintDialog>
 #include <QPrinter>
+#endif
 #include <QFileDialog>
 #include <QTextDocumentWriter>
 #include <QCloseEvent>
@@ -186,7 +188,9 @@ private slots:
 
     void on_actionOptions_triggered();
     void on_actionExit_triggered();
+#ifndef Q_OS_ANDROID
     void on_actionPrint_triggered();
+#endif
     void on_actionAbout_triggered();
     void on_actionHelp_triggered();
     void on_actionIntrfaceHelp_triggered();

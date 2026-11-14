@@ -150,7 +150,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // Long desktop icon rows become horizontally scrollable touch strips.
     // Every original action remains available without squeezing the controls.
-    const auto makeTouchStrip = [this, resultsContent](QHBoxLayout *bar, const QString &name) {
+    const auto makeTouchStrip = [this, resultsContent, resultsContentLayout](QHBoxLayout *bar, const QString &name) {
         const int position = resultsContentLayout->indexOf(bar);
         if (position < 0)
             return;

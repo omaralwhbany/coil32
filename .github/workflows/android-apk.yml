@@ -1,0 +1,70 @@
+name: Android APK
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    name: Build Coil64 for Android (arm64-v8a)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;26.1.10909125"
+
+      - name: Install Qt for Android
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: linux
+          target: android
+          arch: android_arm64_v8a
+
+      - name: Configure Android build environment
+        run: |
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/26.1.10909125" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> "$GITHUB_ENV"
+          java -version
+          qmake -query QT_VERSION
+          qmake -query QT_INSTALL_PREFIX
+
+      - name: Build native Qt application
+        run: |
+          mkdir -p build
+          cd build
+          qmake "$GITHUB_WORKSPACE/Coil64.pro" -spec android-clang CONFIG+=release
+          make -j2
+
+      - name: Package APK
+        run: |
+          cd build
+          make apk
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          find . -type f -name '*.apk' -print -exec cp {} "$GITHUB_WORKSPACE/artifacts/Coil64-android-arm64.apk" \;
+          test -s "$GITHUB_WORKSPACE/artifacts/Coil64-android-arm64.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coil64-android-arm64-apk
+          path: artifacts/Coil64-android-arm64.apk
+          if-no-files-found: error

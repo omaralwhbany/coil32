@@ -36,11 +36,12 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     mui->setupUi(this);
 #ifdef Q_OS_ANDROID
-    // Printing through Qt PrintSupport is not available on Android.
+    // Android uses a dedicated single-column touch layout. The desktop UI and
+    // all calculation widgets/slots remain the same; only their presentation
+    // and parent layouts are adapted here.
     mui->actionPrint->setVisible(false);
     mui->toolButton_Print->setVisible(false);
 
-    // Reflow the desktop layout and make the calculator area scrollable on phones.
     setMinimumSize(0, 0);
     mui->centralWidget->setMinimumSize(0, 0);
     mui->widget->setMinimumSize(0, 0);
@@ -48,49 +49,96 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->tabWidget->setMinimumSize(0, 0);
     mui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // Keep the primary Calculate action outside the scroll area so it remains
-    // visible at the bottom of the phone screen while the input form scrolls.
+    // The coil selector becomes a compact horizontal, touch-friendly gallery.
+    // Keep the existing QListWidget and its signals so the original selection
+    // and calculation flow is preserved.
+    mui->image->hide();
+    mui->listWidget->setMinimumSize(0, 0);
+    mui->listWidget->setMaximumHeight(142);
+    mui->listWidget->setViewMode(QListView::IconMode);
+    mui->listWidget->setFlow(QListView::LeftToRight);
+    mui->listWidget->setWrapping(false);
+    mui->listWidget->setMovement(QListView::Static);
+    mui->listWidget->setResizeMode(QListView::Adjust);
+    mui->listWidget->setGridSize(QSize(116, 104));
+    mui->listWidget->setIconSize(QSize(48, 48));
+    mui->listWidget->setSpacing(4);
+    mui->listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    mui->listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mui->listWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
+    mui->groupBox_List1->setTitle(tr("Choose coil type"));
+    mui->groupBox_List1->setMinimumHeight(0);
+    mui->groupBox_List1->setMaximumHeight(154);
+    mui->verticalLayout->setSpacing(3);
+    mui->verticalLayout->setContentsMargins(8, 6, 8, 2);
+
+    // The original horizontal desktop split is reflowed into a phone page:
+    // selector gallery, then calculator. The calculator form scrolls while
+    // the primary action remains pinned below it.
+    mui->horizontalLayout->setDirection(QBoxLayout::TopToBottom);
+    mui->horizontalLayout->setContentsMargins(8, 6, 8, 8);
+    mui->horizontalLayout->setSpacing(6);
+    mui->line_12->setFrameShape(QFrame::HLine);
+    mui->line_12->setMaximumHeight(1);
+
     auto *calculatorPanel = new QWidget(this);
+    calculatorPanel->setObjectName(QStringLiteral("androidCalculatorPanel"));
+    calculatorPanel->setMinimumSize(0, 0);
     auto *calculatorPanelLayout = new QVBoxLayout(calculatorPanel);
     calculatorPanelLayout->setContentsMargins(0, 0, 0, 0);
-    calculatorPanelLayout->setSpacing(4);
+    calculatorPanelLayout->setSpacing(6);
 
     auto *calculatorScroll = new QScrollArea(calculatorPanel);
     calculatorScroll->setObjectName(QStringLiteral("androidCalculatorScrollArea"));
     calculatorScroll->setWidgetResizable(true);
     calculatorScroll->setFrameShape(QFrame::NoFrame);
     calculatorScroll->setMinimumSize(0, 0);
+    calculatorScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     mui->horizontalLayout->removeWidget(mui->widget);
+    mui->horizontalLayout->removeWidget(mui->line_12);
     mui->verticalLayout_12->removeWidget(mui->pushButton_Calculate);
     mui->pushButton_Calculate->setParent(calculatorPanel);
-    mui->pushButton_Calculate->setMinimumWidth(0);
-    mui->pushButton_Calculate->setMinimumHeight(50);
+    mui->pushButton_Calculate->setMinimumSize(0, 54);
     mui->pushButton_Calculate->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
     calculatorScroll->setWidget(mui->widget);
     calculatorPanelLayout->addWidget(calculatorScroll, 1);
     calculatorPanelLayout->addWidget(mui->pushButton_Calculate, 0);
+    mui->horizontalLayout->addWidget(mui->line_12, 0);
     mui->horizontalLayout->addWidget(calculatorPanel, 1);
 
-    mui->listWidget->setMinimumWidth(0);
-    mui->listWidget->setMinimumHeight(80);
-    mui->listWidget->setMaximumHeight(115);
-    mui->image->setMaximumSize(140, 72);
-    mui->image->setScaledContents(true);
-    mui->verticalLayout->setSpacing(3);
-    mui->horizontalLayout->setSpacing(4);
-
-    // Make every numeric/text input usable at phone width and reopen the
-    // Android soft keyboard even when the field retained focus after Back.
+    // Consistent touch targets and readable controls throughout the main page.
     const auto inputFields = findChildren<QLineEdit*>();
     for (QLineEdit *field : inputFields) {
         field->setMinimumWidth(0);
-        field->setMinimumHeight(40);
+        field->setMinimumHeight(48);
         field->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         field->setAttribute(Qt::WA_InputMethodEnabled, true);
         field->installEventFilter(this);
     }
+    for (QComboBox *combo : findChildren<QComboBox*>()) {
+        combo->setMinimumHeight(46);
+        combo->setMinimumWidth(0);
+        combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    for (QAbstractButton *button : findChildren<QAbstractButton*>()) {
+        button->setMinimumHeight(qMax(button->minimumHeight(), 44));
+    }
+    mui->tabWidget->setDocumentMode(true);
+    mui->tabWidget->tabBar()->setExpanding(true);
+    mui->textBrowser->setMinimumHeight(120);
+
+    // Dialogs created by the original desktop code are resized to the phone
+    // viewport and receive touch-sized input controls when they are shown.
+    qApp->installEventFilter(this);
+
+    setStyleSheet(styleSheet() + QStringLiteral(
+        "QLineEdit,QComboBox,QSpinBox,QDoubleSpinBox{padding:8px 10px;}"
+        "QPushButton{padding:10px 14px;border-radius:10px;}"
+        "QTabBar::tab{min-height:42px;padding:8px 14px;}"
+        "QGroupBox{margin-top:10px;padding-top:8px;}"
+        "QListWidget::item{padding:5px;}"
+    ));
 #endif
     net_manager = new QNetworkAccessManager();
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -710,14 +758,8 @@ void MainWindow::closeEvent(QCloseEvent *event){
 void MainWindow::resizeEvent(QResizeEvent *)
 {
 #ifdef Q_OS_ANDROID
-    const bool portraitLayout = width() < 600;
-    mui->horizontalLayout->setDirection(portraitLayout
-        ? QBoxLayout::TopToBottom
-        : QBoxLayout::LeftToRight);
-    mui->horizontalLayout->setStretch(0, portraitLayout ? 0 : 1);
-    mui->horizontalLayout->setStretch(2, 1);
-    mui->line_12->setFrameShape(portraitLayout ? QFrame::HLine : QFrame::VLine);
-    mui->listWidget->setMaximumHeight(portraitLayout ? 105 : 150);
+    // Keep the dedicated mobile layout single-column in both orientations.
+    // The selector gallery and calculator form remain vertically navigable.
 #endif
     int w = (int) 235 * sqrt(mui->toolButton_Configure->iconSize().width());
     if (this->width() < w){

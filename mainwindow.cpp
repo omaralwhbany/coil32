@@ -55,28 +55,39 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->tabWidget->setMinimumSize(0, 0);
     mui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // The coil selector becomes a compact horizontal, touch-friendly gallery.
-    // Keep the existing QListWidget and its signals so the original selection
-    // and calculation flow is preserved.
-    mui->image->hide();
+    // Show the real coil drawing preview on Android. The original selection
+    // handler updates this label with the corresponding bundled diagram.
+    mui->image->show();
+    mui->image->setMinimumSize(0, 112);
+    mui->image->setMaximumHeight(132);
+    mui->image->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    mui->image->setAlignment(Qt::AlignCenter);
+    mui->image->setScaledContents(true);
+    mui->image->setStyleSheet(QStringLiteral(
+        "QLabel{background:#ffffff;border:1px solid #d8dee8;border-radius:12px;padding:6px;}"));
+
+    // Coil types are displayed as a wrapping visual grid, not a clipped
+    // horizontal desktop list. Original QListWidget items/icons and signals
+    // are retained, so every existing coil selection remains functional.
     mui->listWidget->setMinimumSize(0, 0);
-    mui->listWidget->setMaximumHeight(142);
+    mui->listWidget->setMaximumHeight(226);
     mui->listWidget->setViewMode(QListView::IconMode);
     mui->listWidget->setFlow(QListView::LeftToRight);
-    mui->listWidget->setWrapping(false);
+    mui->listWidget->setWrapping(true);
     mui->listWidget->setMovement(QListView::Static);
     mui->listWidget->setResizeMode(QListView::Adjust);
-    mui->listWidget->setGridSize(QSize(116, 104));
-    mui->listWidget->setIconSize(QSize(48, 48));
-    mui->listWidget->setSpacing(4);
-    mui->listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    mui->listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mui->listWidget->setGridSize(QSize(124, 112));
+    mui->listWidget->setIconSize(QSize(68, 68));
+    mui->listWidget->setSpacing(6);
+    mui->listWidget->setWordWrap(true);
+    mui->listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    mui->listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     mui->listWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
     mui->groupBox_List1->setTitle(tr("Choose coil type"));
     mui->groupBox_List1->setMinimumHeight(0);
-    mui->groupBox_List1->setMaximumHeight(154);
-    mui->verticalLayout->setSpacing(3);
-    mui->verticalLayout->setContentsMargins(8, 6, 8, 2);
+    mui->groupBox_List1->setMaximumHeight(252);
+    mui->verticalLayout->setSpacing(7);
+    mui->verticalLayout->setContentsMargins(10, 8, 10, 4);
 
     // The original horizontal desktop split is reflowed into a phone page:
     // selector gallery, then calculator. The calculator form scrolls while
@@ -92,7 +103,7 @@ MainWindow::MainWindow(QWidget *parent) :
     auto *mobileHeaderLayout = new QHBoxLayout(mobileHeader);
     mobileHeaderLayout->setContentsMargins(4, 2, 4, 2);
     mobileHeaderLayout->setSpacing(8);
-    auto *appTitle = new QLabel(QCoreApplication::applicationName(), mobileHeader);
+    auto *appTitle = new QLabel(QStringLiteral("Coil64"), mobileHeader);
     appTitle->setObjectName(QStringLiteral("androidAppTitle"));
     appTitle->setStyleSheet(QStringLiteral("font-size:18px;font-weight:600;"));
     auto *overflowButton = new QToolButton(mobileHeader);
@@ -257,6 +268,10 @@ MainWindow::MainWindow(QWidget *parent) :
     title.append(" v");
     title.append(QCoreApplication::applicationVersion());
     setWindowTitle(title);
+#ifdef Q_OS_ANDROID
+    // Android may report the native library name as the application name.
+    setWindowTitle(QStringLiteral("Coil64"));
+#endif
     translator = new QTranslator(qApp);
     timer = new QTimer();
     connect(timer, SIGNAL(timeout()), this, SLOT(on_timer()));
@@ -1049,7 +1064,11 @@ void MainWindow::resetUiFont(){
         widget->update();
     }
     sendOptToDock(*myOpt);
+#ifdef Q_OS_ANDROID
+    mui->listWidget->setIconSize(QSize(68, 68));
+#else
     mui->listWidget->setIconSize(QSize(myOpt->mainFontSize * 2, myOpt->mainFontSize * 2));
+#endif
     mui->toolButton_Clear->setIconSize(QSize(myOpt->mainFontSize * 2, myOpt->mainFontSize * 2));
     mui->toolButton_CopyAll->setIconSize(QSize(myOpt->mainFontSize * 2, myOpt->mainFontSize * 2));
     mui->toolButton_CopySel->setIconSize(QSize(myOpt->mainFontSize * 2, myOpt->mainFontSize * 2));

@@ -92,22 +92,40 @@ MainWindow::MainWindow(QWidget *parent) :
     calculatorPanelLayout->setContentsMargins(0, 0, 0, 0);
     calculatorPanelLayout->setSpacing(6);
 
-    auto *calculatorScroll = new QScrollArea(calculatorPanel);
-    calculatorScroll->setObjectName(QStringLiteral("androidCalculatorScrollArea"));
-    calculatorScroll->setWidgetResizable(true);
-    calculatorScroll->setFrameShape(QFrame::NoFrame);
-    calculatorScroll->setMinimumSize(0, 0);
-    calculatorScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    // Separate input and output into phone-sized pages. The original widgets
+    // are reused directly, preserving all auto-connected slots and behavior.
+    auto *mobilePages = new QTabWidget(calculatorPanel);
+    mobilePages->setObjectName(QStringLiteral("androidMobilePages"));
+    mobilePages->setDocumentMode(true);
+    mobilePages->setMinimumSize(0, 0);
+    mobilePages->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // Put both the original input form and the original result workspace in
-    // one vertically scrolling phone page. No calculator control is recreated
-    // or disconnected, so all original slots and result actions stay intact.
-    auto *calculatorContent = new QWidget;
-    calculatorContent->setObjectName(QStringLiteral("androidCalculatorContent"));
-    calculatorContent->setMinimumSize(0, 0);
-    auto *calculatorContentLayout = new QVBoxLayout(calculatorContent);
-    calculatorContentLayout->setContentsMargins(0, 0, 0, 0);
-    calculatorContentLayout->setSpacing(12);
+    auto *inputPage = new QWidget(mobilePages);
+    auto *inputPageLayout = new QVBoxLayout(inputPage);
+    inputPageLayout->setContentsMargins(0, 0, 0, 0);
+    auto *inputScroll = new QScrollArea(inputPage);
+    inputScroll->setObjectName(QStringLiteral("androidInputScrollArea"));
+    inputScroll->setWidgetResizable(true);
+    inputScroll->setFrameShape(QFrame::NoFrame);
+    inputScroll->setMinimumSize(0, 0);
+    inputScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    auto *resultsPage = new QWidget(mobilePages);
+    auto *resultsPageLayout = new QVBoxLayout(resultsPage);
+    resultsPageLayout->setContentsMargins(0, 0, 0, 0);
+    auto *resultsScroll = new QScrollArea(resultsPage);
+    resultsScroll->setObjectName(QStringLiteral("androidResultsScrollArea"));
+    resultsScroll->setWidgetResizable(true);
+    resultsScroll->setFrameShape(QFrame::NoFrame);
+    resultsScroll->setMinimumSize(0, 0);
+    resultsScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    auto *resultsContent = new QWidget;
+    resultsContent->setObjectName(QStringLiteral("androidResultsContent"));
+    resultsContent->setMinimumSize(0, 0);
+    auto *resultsContentLayout = new QVBoxLayout(resultsContent);
+    resultsContentLayout->setContentsMargins(0, 0, 0, 0);
+    resultsContentLayout->setSpacing(8);
 
     mui->horizontalLayout->removeWidget(mui->widget);
     mui->horizontalLayout->removeWidget(mui->line_12);
@@ -119,29 +137,35 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->pushButton_Calculate->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     mui->line_8->hide();
     mui->line_8->setFrameShape(QFrame::HLine);
-    calculatorContentLayout->addWidget(mui->widget);
-    calculatorContentLayout->addLayout(mui->verticalLayout_11);
+
+    inputScroll->setWidget(mui->widget);
+    inputPageLayout->addWidget(inputScroll);
+    resultsContentLayout->addLayout(mui->verticalLayout_11);
     mui->verticalLayout_11->setContentsMargins(0, 0, 0, 0);
+    resultsScroll->setWidget(resultsContent);
+    resultsPageLayout->addWidget(resultsScroll);
+    mobilePages->addTab(inputPage, tr("Inputs"));
+    mobilePages->addTab(resultsPage, tr("Results"));
+    mobilePages->setCurrentIndex(0);
 
     // Long desktop icon rows become horizontally scrollable touch strips.
     // Every original action remains available without squeezing the controls.
-    const auto makeTouchStrip = [this](QHBoxLayout *bar, const QString &name) {
-        const int position = mui->verticalLayout_11->indexOf(bar);
+    const auto makeTouchStrip = [this, resultsContent](QHBoxLayout *bar, const QString &name) {
+        const int position = resultsContentLayout->indexOf(bar);
         if (position < 0)
             return;
         for (int i = bar->count() - 1; i >= 0; --i) {
             QLayoutItem *item = bar->itemAt(i);
-            if (item && item->spacerItem()) {
+            if (item && item->spacerItem())
                 delete bar->takeAt(i);
-            }
         }
         bar->setContentsMargins(4, 2, 4, 2);
         bar->setSpacing(6);
-        mui->verticalLayout_11->removeItem(bar);
+        resultsContentLayout->removeItem(bar);
         bar->setParent(nullptr);
         auto *stripContent = new QWidget;
         stripContent->setLayout(bar);
-        auto *strip = new QScrollArea(calculatorContent);
+        auto *strip = new QScrollArea(resultsContent);
         strip->setObjectName(name);
         strip->setWidget(stripContent);
         strip->setWidgetResizable(false);
@@ -149,17 +173,21 @@ MainWindow::MainWindow(QWidget *parent) :
         strip->setFixedHeight(58);
         strip->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         strip->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        mui->verticalLayout_11->insertWidget(position, strip);
+        resultsContentLayout->insertWidget(position, strip);
     };
     makeTouchStrip(mui->horizontalLayout_5, QStringLiteral("androidDisplayOptionsStrip"));
     makeTouchStrip(mui->horizontalLayout_1, QStringLiteral("androidResultActionsStrip"));
     makeTouchStrip(mui->horizontalLayout_2, QStringLiteral("androidFileActionsStrip"));
 
-    calculatorScroll->setWidget(calculatorContent);
-    calculatorPanelLayout->addWidget(calculatorScroll, 1);
+    calculatorPanelLayout->addWidget(mobilePages, 1);
     calculatorPanelLayout->addWidget(mui->pushButton_Calculate, 0);
     mui->horizontalLayout->addWidget(mui->line_12, 0);
     mui->horizontalLayout->addWidget(calculatorPanel, 1);
+
+    connect(mui->listWidget, &QListWidget::currentRowChanged, this, [this](int) {
+        if (auto *pages = findChild<QTabWidget*>(QStringLiteral("androidMobilePages")))
+            pages->setCurrentIndex(0);
+    });
 
     // Consistent touch targets and readable controls throughout the main page.
     const auto inputFields = findChildren<QLineEdit*>();
@@ -1133,6 +1161,10 @@ void MainWindow::on_calculation_finished()
     timer->stop();
     mui->pushButton_Calculate->setText(tr("Calculate"));
     this->setCursor(Qt::ArrowCursor);
+#ifdef Q_OS_ANDROID
+    if (auto *pages = findChild<QTabWidget*>(QStringLiteral("androidMobilePages")))
+        pages->setCurrentIndex(1);
+#else
     if (tab == 0){
         mui->lineEdit_ind->setFocus();
         mui->lineEdit_ind->selectAll();
@@ -1145,6 +1177,7 @@ void MainWindow::on_calculation_finished()
             mui->lineEdit_N->selectAll();
         }
     }
+#endif
     thread->deleteLater();
     thread = nullptr;
 }

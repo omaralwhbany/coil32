@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 #include "resolve_q.h"
 
 #ifdef Q_OS_ANDROID
+#include <QBoxLayout>
 #include <QPdfWriter>
 #include <QPageLayout>
 #include <QPageSize>
@@ -35,6 +36,20 @@ MainWindow::MainWindow(QWidget *parent) :
     // Printing through Qt PrintSupport is not available on Android.
     mui->actionPrint->setVisible(false);
     mui->toolButton_Print->setVisible(false);
+
+    // Adapt the desktop two-column layout to narrow phone screens.
+    setMinimumSize(0, 0);
+    mui->widget->setMinimumWidth(0);
+    mui->widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mui->tabWidget->setMinimumWidth(0);
+    mui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mui->listWidget->setMinimumWidth(0);
+    mui->listWidget->setMinimumHeight(90);
+    mui->listWidget->setMaximumHeight(150);
+    mui->image->setMaximumSize(160, 90);
+    mui->image->setScaledContents(true);
+    mui->verticalLayout->setSpacing(4);
+    mui->horizontalLayout->setSpacing(6);
 #endif
     net_manager = new QNetworkAccessManager();
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -653,6 +668,13 @@ void MainWindow::closeEvent(QCloseEvent *event){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MainWindow::resizeEvent(QResizeEvent *)
 {
+#ifdef Q_OS_ANDROID
+    const bool portraitLayout = width() < 600;
+    mui->horizontalLayout->setDirection(portraitLayout
+        ? QBoxLayout::TopToBottom
+        : QBoxLayout::LeftToRight);
+    mui->line_12->setFrameShape(portraitLayout ? QFrame::HLine : QFrame::VLine);
+#endif
     int w = (int) 235 * sqrt(mui->toolButton_Configure->iconSize().width());
     if (this->width() < w){
         mui->horizontalLayout_5->insertWidget(0, mui->toolButton_lShowFirst);

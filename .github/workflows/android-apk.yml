@@ -61,12 +61,17 @@ jobs:
           qmake "$GITHUB_WORKSPACE/Coil64.pro" -spec android-clang CONFIG+=release
           make -j2
 
-      - name: Package APK
+      - name: Package and validate APK
         run: |
           cd build
           make apk
+          APK_PATH="$(find . -type f -name '*.apk' -print -quit)"
+          test -n "$APK_PATH"
+          test -s "$APK_PATH"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK_PATH"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH"
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          find . -type f -name '*.apk' -print -exec cp {} "$GITHUB_WORKSPACE/artifacts/Coil64-android-arm64.apk" \;
+          cp "$APK_PATH" "$GITHUB_WORKSPACE/artifacts/Coil64-android-arm64.apk"
           test -s "$GITHUB_WORKSPACE/artifacts/Coil64-android-arm64.apk"
 
       - name: Upload APK artifact

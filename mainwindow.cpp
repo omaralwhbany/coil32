@@ -76,16 +76,48 @@ MainWindow::MainWindow(QWidget *parent) :
     mui->listWidget->setWrapping(true);
     mui->listWidget->setMovement(QListView::Static);
     mui->listWidget->setResizeMode(QListView::Adjust);
-    mui->listWidget->setGridSize(QSize(124, 112));
-    mui->listWidget->setIconSize(QSize(68, 68));
-    mui->listWidget->setSpacing(6);
+    // Two-column adaptive card grid: full names and the original coil-form
+    // illustrations remain visible without horizontal scrolling.
+    mui->listWidget->setGridSize(QSize(154, 126));
+    mui->listWidget->setIconSize(QSize(76, 76));
+    mui->listWidget->setSpacing(8);
     mui->listWidget->setWordWrap(true);
+    mui->listWidget->setTextElideMode(Qt::ElideNone);
     mui->listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mui->listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     mui->listWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
+    mui->listWidget->setStyleSheet(QStringLiteral(
+        "QListWidget{background:transparent;border:0;outline:0;}"
+        "QListWidget::item{background:#f3f5f8;color:#202633;border:1px solid #dce2ea;"
+        "border-radius:12px;padding:6px;margin:2px;}"
+        "QListWidget::item:selected{background:#dceafe;border:2px solid #3978d5;color:#142b49;}"));
+
+    // Rebind every bundled illustration explicitly. This avoids platform/style
+    // differences in the designer-generated icon state (normalon/normaloff).
+    const QStringList coilTypeIcons = {
+        QStringLiteral(":/menu_ico/res/ico1-one-layer-sw.png"),
+        QStringLiteral(":/menu_ico/res/ico1-one-layer.png"),
+        QStringLiteral(":/menu_ico/res/ico1-one-layer0.png"),
+        QStringLiteral(":/menu_ico/res/ico1-one-layer1.png"),
+        QStringLiteral(":/menu_ico/res/ico1-multi-layer.png"),
+        QStringLiteral(":/menu_ico/res/ico1-multi-layer0.png"),
+        QStringLiteral(":/menu_ico/res/ico1-multi-layer-rect.png"),
+        QStringLiteral(":/menu_ico/res/ico1-multi-tape.png"),
+        QStringLiteral(":/menu_ico/res/ico1-ferrite.png"),
+        QStringLiteral(":/menu_ico/res/ico1-pcb-coil.png"),
+        QStringLiteral(":/menu_ico/res/ico1-spiral.png")
+    };
+    for (int i = 0; i < qMin(mui->listWidget->count(), coilTypeIcons.size()); ++i) {
+        const QIcon icon(coilTypeIcons.at(i));
+        if (!icon.isNull())
+            mui->listWidget->item(i)->setIcon(icon);
+        mui->listWidget->item(i)->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+        mui->listWidget->item(i)->setSizeHint(QSize(150, 122));
+    }
+
     mui->groupBox_List1->setTitle(tr("Choose coil type"));
     mui->groupBox_List1->setMinimumHeight(0);
-    mui->groupBox_List1->setMaximumHeight(252);
+    mui->groupBox_List1->setMaximumHeight(318);
     mui->verticalLayout->setSpacing(7);
     mui->verticalLayout->setContentsMargins(10, 8, 10, 4);
 

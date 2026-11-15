@@ -33,6 +33,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses
 #include <QPageLayout>
 #include <QPageSize>
 #include <QScrollArea>
+#include <QStackedWidget>
+#include <QGridLayout>
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,6 +291,126 @@ MainWindow::MainWindow(QWidget *parent) :
         "QTabBar::tab{min-height:42px;padding:8px 14px;}"
         "QGroupBox{margin-top:10px;padding-top:8px;}"
         "QListWidget::item{padding:5px;}"
+    ));
+
+    // Native mobile navigation: a dedicated start screen and a separate
+    // calculator workspace. No desktop split-pane remains on Android.
+    auto *mobileStack = new QStackedWidget(mui->centralWidget);
+    mobileStack->setObjectName(QStringLiteral("androidMobileRoot"));
+    auto *homePage = new QWidget(mobileStack);
+    homePage->setObjectName(QStringLiteral("androidHomePage"));
+    auto *homeLayout = new QVBoxLayout(homePage);
+    homeLayout->setContentsMargins(16, 12, 16, 16);
+    homeLayout->setSpacing(14);
+
+    auto *homeIntro = new QLabel(tr("Coil calculators"), homePage);
+    homeIntro->setStyleSheet(QStringLiteral("font-size:24px;font-weight:700;padding:4px 0;"));
+    auto *homeHint = new QLabel(tr("Choose a coil form to get started"), homePage);
+    homeHint->setWordWrap(true);
+    homeHint->setStyleSheet(QStringLiteral("font-size:14px;color:#8b96a8;"));
+
+    auto *categoryCard = new QWidget(homePage);
+    auto *categoryLayout = new QHBoxLayout(categoryCard);
+    categoryLayout->setContentsMargins(0, 0, 0, 0);
+    categoryLayout->setSpacing(8);
+    const auto addCategory = [this, categoryLayout, mobileStack](const QString &label, int tabIndex) {
+        auto *button = new QPushButton(label, mobileStack);
+        button->setCheckable(true);
+        button->setMinimumHeight(46);
+        button->setStyleSheet(QStringLiteral(
+            "QPushButton{border:1px solid #38465b;border-radius:12px;padding:8px 12px;"
+            "background:#202a39;color:#eaf0f8;font-weight:600;}"
+            "QPushButton:checked{background:#2563eb;border-color:#2563eb;color:white;}"));
+        categoryLayout->addWidget(button, 1);
+        connect(button, &QPushButton::clicked, this, [this, tabIndex, mobileStack]() {
+            mui->tabWidget->setCurrentIndex(tabIndex);
+            if (tabIndex == 2) {
+                mui->groupBox_List1->hide();
+                mobileStack->setCurrentIndex(1);
+            } else {
+                mui->groupBox_List1->show();
+                mobileStack->setCurrentIndex(0);
+            }
+        });
+        return button;
+    };
+    auto *coilCategory = addCategory(tr("Coil"), 0);
+    addCategory(tr("Inductance"), 1);
+    addCategory(tr("LC circuit"), 2);
+    coilCategory->setChecked(true);
+
+    auto *catalogTitle = new QLabel(tr("Coil forms"), homePage);
+    catalogTitle->setStyleSheet(QStringLiteral("font-size:18px;font-weight:650;padding-top:4px;"));
+
+    mui->verticalLayout->removeWidget(mui->groupBox_List1);
+    mui->verticalLayout->removeWidget(mui->image);
+    mui->groupBox_List1->setParent(homePage);
+    mui->groupBox_List1->setMaximumHeight(QWIDGETSIZE_MAX);
+    mui->groupBox_List1->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    homeLayout->addWidget(homeIntro);
+    homeLayout->addWidget(homeHint);
+    homeLayout->addWidget(categoryCard);
+    homeLayout->addWidget(catalogTitle);
+    homeLayout->addWidget(mui->groupBox_List1, 1);
+
+    auto *calculatorPage = new QWidget(mobileStack);
+    calculatorPage->setObjectName(QStringLiteral("androidCalculatorPage"));
+    auto *calculatorLayout = new QVBoxLayout(calculatorPage);
+    calculatorLayout->setContentsMargins(12, 8, 12, 12);
+    calculatorLayout->setSpacing(8);
+    auto *calculatorHeader = new QHBoxLayout;
+    auto *backButton = new QToolButton(calculatorPage);
+    backButton->setText(tr("Back"));
+    backButton->setIcon(QIcon(QStringLiteral(":/menu_ico/res/ico2-reply-all-arrow.png")));
+    backButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    backButton->setMinimumSize(76, 46);
+    auto *calculatorTitle = new QLabel(tr("Coil calculator"), calculatorPage);
+    calculatorTitle->setStyleSheet(QStringLiteral("font-size:19px;font-weight:700;"));
+    calculatorHeader->addWidget(backButton);
+    calculatorHeader->addWidget(calculatorTitle, 1);
+    calculatorLayout->addLayout(calculatorHeader);
+
+    mui->verticalLayout->removeWidget(mui->image);
+    mui->image->setParent(calculatorPage);
+    mui->image->setMinimumHeight(100);
+    mui->image->setMaximumHeight(116);
+    mui->image->setScaledContents(false);
+    calculatorLayout->addWidget(mui->image);
+    mui->horizontalLayout->removeItem(mui->verticalLayout);
+    mui->horizontalLayout->removeWidget(mui->line_12);
+    mui->horizontalLayout->removeWidget(calculatorPanel);
+    mui->horizontalLayout->removeWidget(mobileHeader);
+    mobileHeader->hide();
+    mui->line_12->hide();
+    calculatorLayout->addWidget(calculatorPanel, 1);
+
+    mobileStack->addWidget(homePage);
+    mobileStack->addWidget(calculatorPage);
+    mobileStack->setCurrentWidget(homePage);
+    mui->horizontalLayout->addWidget(mobileStack);
+    mui->horizontalLayout->setContentsMargins(0, 0, 0, 0);
+    mui->horizontalLayout->setSpacing(0);
+    connect(backButton, &QToolButton::clicked, this, [mobileStack]() {
+        mobileStack->setCurrentIndex(0);
+    });
+    connect(mui->listWidget, &QListWidget::itemClicked, this,
+            [this, mobileStack, calculatorTitle](QListWidgetItem *item) {
+        if (!item)
+            return;
+        calculatorTitle->setText(item->text());
+        mobileStack->setCurrentIndex(1);
+        if (auto *pages = findChild<QTabWidget*>(QStringLiteral("androidMobilePages")))
+            pages->setCurrentIndex(0);
+    });
+    mui->menuBar->hide();
+    setStyleSheet(styleSheet() + QStringLiteral(
+        "QWidget#androidHomePage{background:#101722;}"
+        "QWidget#androidCalculatorPage{background:#101722;}"
+        "QGroupBox{border:1px solid #29364a;border-radius:14px;margin-top:8px;padding:12px;}"
+        "QGroupBox::title{subcontrol-origin:margin;left:12px;padding:0 5px;color:#b8c6d9;}"
+        "QListWidget{background:transparent;}"
+        "QLineEdit{background:#202a39;color:#f2f5fa;border:1px solid #3b4a60;border-radius:10px;}"
+        "QPushButton#pushButton_Calculate{background:#2563eb;color:white;font-weight:700;}"
     ));
 #endif
     net_manager = new QNetworkAccessManager();
